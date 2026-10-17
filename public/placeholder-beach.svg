@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-beach" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#075985" />
+    </linearGradient>
+    <linearGradient id="sun" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg-beach)" />
+  <!-- Sun -->
+  <circle cx="400" cy="180" r="50" fill="url(#sun)" opacity="0.9" />
+  <!-- Waves / Coastline -->
+  <path d="M0 320 C 150 290, 250 340, 400 310 C 550 280, 650 330, 800 300 L800 500 L0 500 Z" fill="#0284c7" opacity="0.6" />
+  <path d="M0 360 C 200 340, 300 380, 500 350 C 650 330, 720 370, 800 350 L800 500 L0 500 Z" fill="#38bdf8" opacity="0.4" />
+  <!-- Beach Umbrella Icon -->
+  <g transform="translate(370, 160) scale(2.5)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2v20" />
+    <path d="M4 12a8 8 0 0 1 16 0z" fill="rgba(255, 255, 255, 0.25)" />
+  </g>
+  <text x="400" y="420" fill="#f8fafc" font-family="Plus Jakarta Sans, sans-serif" font-size="24" font-weight="700" text-anchor="middle" letter-spacing="1">BEACH &amp; COASTLINE</text>
+  <text x="400" y="450" fill="#bae6fd" font-family="Plus Jakarta Sans, sans-serif" font-size="15" text-anchor="middle">Scenic Coastal &amp; Waterfront Destination</text>
+</svg>

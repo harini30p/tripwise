@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-city" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg-city)" />
+  <!-- City Skyline -->
+  <rect x="140" y="220" width="70" height="180" fill="#4338ca" opacity="0.5" />
+  <rect x="220" y="160" width="90" height="240" fill="#4f46e5" opacity="0.6" />
+  <rect x="320" y="120" width="100" height="280" fill="#6366f1" opacity="0.7" />
+  <rect x="430" y="170" width="85" height="230" fill="#4f46e5" opacity="0.6" />
+  <rect x="525" y="200" width="95" height="200" fill="#4338ca" opacity="0.5" />
+  <rect x="630" y="240" width="60" height="160" fill="#3730a3" opacity="0.4" />
+  <!-- Building Spire / Windows -->
+  <line x1="370" y1="80" x2="370" y2="120" stroke="#a5b4fc" stroke-width="3" />
+  <circle cx="370" cy="78" r="4" fill="#fbbf24" />
+  <g transform="translate(370, 230) scale(2.5)" stroke="#e0e7ff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+    <line x1="9" y1="22" x2="9" y2="18" />
+    <line x1="15" y1="22" x2="15" y2="18" />
+    <line x1="18" y1="18" x2="6" y2="18" />
+  </g>
+  <text x="400" y="420" fill="#f8fafc" font-family="Plus Jakarta Sans, sans-serif" font-size="24" font-weight="700" text-anchor="middle" letter-spacing="1">CITY &amp; URBAN EXPLORATION</text>
+  <text x="400" y="450" fill="#c7d2fe" font-family="Plus Jakarta Sans, sans-serif" font-size="15" text-anchor="middle">Metropolitan Sight, Plaza &amp; Neighborhood</text>
+</svg>
