@@ -21,6 +21,7 @@ export default function MyTripSection({
   tripItems,
   onRemoveTripItem,
   onExploreMore,
+  onViewDetails = null,
   isLoading,
   error,
   onRetryLoad,
@@ -157,14 +158,26 @@ export default function MyTripSection({
                 </div>
                 <div className="trip-item-meta">
                   <span className="trip-item-budget">{item.estimatedCost}</span>
-                  <button
-                    type="button"
-                    className="btn-remove-item"
-                    onClick={() => onRemoveTripItem(item.id)}
-                    title="Remove destination"
-                  >
-                    Remove
-                  </button>
+                  <div className="trip-item-actions">
+                    {onViewDetails && (
+                      <button
+                        type="button"
+                        className="btn-item-details"
+                        onClick={() => onViewDetails(item)}
+                        title="View destination details and map"
+                      >
+                        Details
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-remove-item"
+                      onClick={() => onRemoveTripItem(item.id)}
+                      title="Remove destination"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import DestinationGrid from './components/DestinationGrid';
 import MyTripSection from './components/MyTripSection';
+import DestinationDetailModal from './components/DestinationDetailModal';
 import { INITIAL_DESTINATIONS } from './data/destinations';
 import {
   hasGeoapifyKey,
@@ -27,6 +28,11 @@ export default function App() {
   // Separate states for text search and category filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  // Sorting state: 'default' | 'name-asc' | 'name-desc' | 'rating-desc'
+  const [sortBy, setSortBy] = useState('default');
+
+  // Dedicated Destination Details Modal state
+  const [modalDestination, setModalDestination] = useState(null);
 
   // ── Itinerary state ────────────────────────────────────────────────────────
   // tripItems: the displayed list, always sourced from the server
@@ -102,30 +108,64 @@ export default function App() {
     loadDestinations(searchQuery, newCategory);
   };
 
-  // Client-side filtering for sample (non-live) mode
+  // Client-side filtering & sorting without mutating original arrays
   const displayedDestinations = useMemo(() => {
-    if (isLive) return destinations;
+    let list;
 
-    const q = searchQuery.trim().toLowerCase();
-    const cat = selectedCategory.trim().toLowerCase();
+    if (isLive) {
+      list = [...destinations];
+    } else {
+      const q = searchQuery.trim().toLowerCase();
+      const cat = selectedCategory.trim().toLowerCase();
 
-    return destinations.filter((item) => {
-      const matchesQuery =
-        !q ||
-        item.title.toLowerCase().includes(q) ||
-        item.country.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q);
+      list = destinations.filter((item) => {
+        const matchesQuery =
+          !q ||
+          item.title.toLowerCase().includes(q) ||
+          item.country.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q);
 
-      const matchesCat =
-        !cat ||
-        item.category.toLowerCase().includes(cat) ||
-        (cat === 'city breaks' && item.category.toLowerCase().includes('city')) ||
-        (cat === 'cultural heritage' &&
-          item.category.toLowerCase().includes('cultural'));
+        const matchesCat =
+          !cat ||
+          item.category.toLowerCase().includes(cat) ||
+          (cat === 'city breaks' && item.category.toLowerCase().includes('city')) ||
+          (cat === 'cultural heritage' &&
+            item.category.toLowerCase().includes('cultural'));
 
-      return matchesQuery && matchesCat;
-    });
-  }, [isLive, destinations, searchQuery, selectedCategory]);
+        return matchesQuery && matchesCat;
+      });
+    }
+
+    // Apply sorting to a shallow copy
+    if (sortBy === 'name-asc') {
+      return [...list].sort((a, b) =>
+        (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' })
+      );
+    }
+
+    if (sortBy === 'name-desc') {
+      return [...list].sort((a, b) =>
+        (b.title || '').localeCompare(a.title || '', undefined, { sensitivity: 'base' })
+      );
+    }
+
+    if (sortBy === 'rating-desc') {
+      return [...list].sort((a, b) => {
+        const rA = typeof a.rating === 'number' && !isNaN(a.rating) ? a.rating : -1;
+        const rB = typeof b.rating === 'number' && !isNaN(b.rating) ? b.rating : -1;
+
+        // If both have ratings, higher rating comes first
+        if (rA >= 0 && rB >= 0) return rB - rA;
+        // Destinations with ratings come before unrated destinations
+        if (rA >= 0) return -1;
+        if (rB >= 0) return 1;
+        // If neither has a rating, preserve alphabetical or original stability
+        return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      });
+    }
+
+    return list;
+  }, [isLive, destinations, searchQuery, selectedCategory, sortBy]);
 
   // ── Itinerary: load from server on mount ─────────────────────────────────
   useEffect(() => {
@@ -262,6 +302,7 @@ export default function App() {
             <DestinationGrid
               destinations={displayedDestinations}
               onSelectDestination={handleAddToTrip}
+              onViewDetails={(item) => setModalDestination(item)}
               tripItemIds={tripItems.map((item) => getStableItemId(item))}
               isLoading={isLoading}
               error={error}
@@ -269,6 +310,8 @@ export default function App() {
               onUseSampleData={switchToSampleData}
               isLive={isLive}
               resolvedCity={resolvedCity}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
             />
           </>
         ) : (
@@ -276,6 +319,7 @@ export default function App() {
             tripItems={tripItems}
             onRemoveTripItem={handleRemoveTripItem}
             onExploreMore={() => setActiveTab('explore')}
+            onViewDetails={(item) => setModalDestination(item)}
             isLoading={itineraryLoading}
             error={itineraryError}
             onRetryLoad={() => {
@@ -295,6 +339,21 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Dedicated Destination Details Modal View */}
+      <DestinationDetailModal
+        destination={modalDestination}
+        isOpen={Boolean(modalDestination)}
+        onClose={() => setModalDestination(null)}
+        onToggleTrip={handleAddToTrip}
+        isInTrip={
+          modalDestination
+            ? tripItems.some(
+                (item) => getStableItemId(item) === getStableItemId(modalDestination)
+              )
+            : false
+        }
+      />
 
       {/* Footer */}
       <footer className="app-footer">

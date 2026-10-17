@@ -103,6 +103,43 @@
   border-color: var(--color-primary);
 }
 
+/* Sorting Controls */
+.sort-control-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px 4px 14px;
+  transition: border-color var(--transition-fast);
+}
+
+.sort-control-wrapper:hover,
+.sort-control-wrapper:focus-within {
+  border-color: var(--color-primary);
+}
+
+.sort-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sort-select {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  cursor: pointer;
+  outline: none;
+  padding: 4px 6px;
+}
+
 /* API Error Card */
 .api-error-card {
   display: flex;
@@ -319,6 +356,29 @@
   text-overflow: ellipsis;
 }
 
+.card-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-details-btn {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.card-details-btn:hover {
+  background: #e2e8f0;
+  color: var(--color-text-main);
+  border-color: #cbd5e1;
+}
+
 .card-add-btn {
   background: var(--color-primary-light);
   color: var(--color-primary);
@@ -471,4 +531,41 @@
 
 .attribution-note a:hover {
   color: var(--color-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-meta-group {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .sort-control-wrapper {
+    flex: 1;
+    min-width: 180px;
+    justify-content: space-between;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .card-actions-group {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .card-details-btn,
+  .card-add-btn {
+    flex: 1;
+    text-align: center;
+  }
 }

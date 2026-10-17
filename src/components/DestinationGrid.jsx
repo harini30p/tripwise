@@ -5,6 +5,7 @@ import './DestinationGrid.css';
 export default function DestinationGrid({
   destinations,
   onSelectDestination,
+  onViewDetails = null,
   tripItemIds = [],
   isLoading = false,
   error = null,
@@ -12,6 +13,8 @@ export default function DestinationGrid({
   onUseSampleData = null,
   isLive = false,
   resolvedCity = null,
+  sortBy = 'default',
+  onSortChange = null,
 }) {
   return (
     <section className="destinations-section">
@@ -42,6 +45,27 @@ export default function DestinationGrid({
           </div>
 
           <div className="header-meta-group">
+            {/* Sorting Controls */}
+            {onSortChange && (
+              <div className="sort-control-wrapper">
+                <label htmlFor="destination-sort-select" className="sort-label">
+                  Sort:
+                </label>
+                <select
+                  id="destination-sort-select"
+                  className="sort-select"
+                  value={sortBy}
+                  onChange={(e) => onSortChange(e.target.value)}
+                  aria-label="Sort destinations"
+                >
+                  <option value="default">Default</option>
+                  <option value="name-asc">Name (A–Z)</option>
+                  <option value="name-desc">Name (Z–A)</option>
+                  <option value="rating-desc">Rating (High to Low)</option>
+                </select>
+              </div>
+            )}
+
             {!isLoading && (
               <div className="results-count">
                 <span>{destinations.length} places available</span>
@@ -162,14 +186,26 @@ export default function DestinationGrid({
                       <span className="budget-label">Category / Type</span>
                       <span className="budget-value">{item.estimatedCost || 'Attraction'}</span>
                     </div>
-                    <button
-                      type="button"
-                      className={`card-add-btn ${tripItemIds?.includes(item.id) ? 'added' : ''}`}
-                      onClick={() => onSelectDestination(item)}
-                      title={tripItemIds?.includes(item.id) ? 'Already added to your trip' : 'Add to trip'}
-                    >
-                      {tripItemIds?.includes(item.id) ? '✓ Added' : '+ Add to Trip'}
-                    </button>
+                    <div className="card-actions-group">
+                      {onViewDetails && (
+                        <button
+                          type="button"
+                          className="card-details-btn"
+                          onClick={() => onViewDetails(item)}
+                          title="View destination details and map"
+                        >
+                          View Details
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={`card-add-btn ${tripItemIds?.includes(item.id) ? 'added' : ''}`}
+                        onClick={() => onSelectDestination(item)}
+                        title={tripItemIds?.includes(item.id) ? 'Already added to your trip' : 'Add to trip'}
+                      >
+                        {tripItemIds?.includes(item.id) ? '✓ Added' : '+ Add to Trip'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>

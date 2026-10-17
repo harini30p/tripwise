@@ -193,6 +193,29 @@
   color: var(--color-text-main);
 }
 
+.trip-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-item-details {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.btn-item-details:hover {
+  background: #e2e8f0;
+  color: var(--color-text-main);
+  border-color: #cbd5e1;
+}
+
 .btn-remove-item {
   background: transparent;
   color: #ef4444;
