@@ -2,9 +2,95 @@ import React from 'react';
 import { handleImageFallbackError } from '../utils/imageFallbacks';
 import './MyTripSection.css';
 
-export default function MyTripSection({ tripItems, onRemoveTripItem, onExploreMore }) {
+/**
+ * MyTripSection
+ *
+ * Displays the user's saved itinerary, sourced from the PostgreSQL backend.
+ *
+ * Props:
+ *   tripItems          – array of saved destination objects
+ *   onRemoveTripItem   – called with a destination id to remove it
+ *   onExploreMore      – navigates back to the Explore tab
+ *   isLoading          – true while the initial API load is in flight
+ *   error              – startup error message (API unreachable at load time)
+ *   onRetryLoad        – retries the initial GET /api/itinerary call
+ *   actionError        – transient error from a failed add/remove operation
+ *   onDismissActionError – clears the action error banner
+ */
+export default function MyTripSection({
+  tripItems,
+  onRemoveTripItem,
+  onExploreMore,
+  isLoading,
+  error,
+  onRetryLoad,
+  actionError,
+  onDismissActionError,
+}) {
   const hasItems = tripItems && tripItems.length > 0;
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <section className="mytrip-section">
+        <div className="container">
+          <div className="mytrip-header">
+            <div>
+              <div className="mytrip-badge">Itinerary Workspace</div>
+              <h2 className="mytrip-title">My Trip Plan</h2>
+              <p className="mytrip-subtitle">Loading your saved destinations…</p>
+            </div>
+          </div>
+          <div className="trip-items-list">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="trip-item-card trip-item-skeleton" aria-hidden="true">
+                <span className="step-number skeleton-block" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                <div className="skeleton-thumb" />
+                <div className="trip-item-info">
+                  <div className="skeleton-block" style={{ width: '40%', height: 14, marginBottom: 8 }} />
+                  <div className="skeleton-block" style={{ width: '70%', height: 18, marginBottom: 8 }} />
+                  <div className="skeleton-block" style={{ width: '90%', height: 13 }} />
+                </div>
+                <div className="trip-item-meta">
+                  <div className="skeleton-block" style={{ width: 80, height: 22 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Startup API error ─────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <section className="mytrip-section">
+        <div className="container">
+          <div className="mytrip-header">
+            <div>
+              <div className="mytrip-badge">Itinerary Workspace</div>
+              <h2 className="mytrip-title">My Trip Plan</h2>
+            </div>
+          </div>
+          <div className="mytrip-api-error" role="alert">
+            <p className="error-heading">⚠️ Could not load your itinerary</p>
+            <p className="error-body">{error}</p>
+            <div className="error-actions">
+              <button type="button" className="btn-retry" onClick={onRetryLoad}>
+                Retry
+              </button>
+              <button type="button" className="btn-explore-more" onClick={onExploreMore}>
+                Explore Destinations
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Normal render ─────────────────────────────────────────────────────────
   return (
     <section className="mytrip-section">
       <div className="container">
@@ -20,6 +106,21 @@ export default function MyTripSection({ tripItems, onRemoveTripItem, onExploreMo
             </button>
           )}
         </div>
+
+        {/* Transient action error (add/remove failure) */}
+        {actionError && (
+          <div className="action-error-banner" role="alert">
+            <span>⚠️ {actionError}</span>
+            <button
+              type="button"
+              className="action-error-dismiss"
+              onClick={onDismissActionError}
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {!hasItems ? (
           <div className="empty-trip-card">

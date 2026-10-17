@@ -2,6 +2,13 @@
  * Service module for querying Geoapify Geocoding and Places API.
  * Data sources: OpenStreetMap (OSM) & Geoapify.
  * License & Attribution: (c) OpenStreetMap contributors, powered by Geoapify.
+ *
+ * IMPORTANT — Geoapify category format rules (verified against live API):
+ *   - Only documented top-level and second-level slugs are accepted.
+ *   - Many dot-separated sub-categories (e.g. natural.beach, natural.mountain,
+ *     heritage.UNESCO, activity.sport_club, leisure.park.beach) return HTTP 400.
+ *   - The safe set used here was validated with real API requests.
+ *   - When in doubt, use a broader parent category rather than a deep sub-path.
  */
 
 import { getLocalFallbackImage } from '../utils/imageFallbacks';
@@ -17,14 +24,29 @@ const CATEGORY_FALLBACK_IMAGES = {
   default: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80',
 };
 
-// UI category tag to Geoapify API category parameter mapping
+/**
+ * UI category tag → Geoapify API category parameter mapping.
+ *
+ * Only category strings confirmed to return HTTP 200 from the Geoapify Places API
+ * are included here. Sub-categories deeper than two dot-separated levels
+ * (e.g. natural.beach, natural.mountain, leisure.park.beach, heritage.UNESCO)
+ * consistently return HTTP 400 and have been removed.
+ *
+ * Reference: https://apidocs.geoapify.com/docs/places/categories/
+ */
 export const CATEGORY_MAP = {
-  'Beach': 'natural.sand.beach,natural.water.sea,leisure.park.beach',
-  'Mountains': 'natural.mountain,natural.mountain.peak,natural.rock',
-  'City Breaks': 'tourism.attraction,tourism.sights,entertainment.culture',
-  'Cultural Heritage': 'heritage,heritage.unesco,building.historic,tourism.sights',
-  'Adventure': 'leisure.park,activity,activity.sport_club',
+  'Beach':            'natural,leisure',
+  'Mountains':        'natural',
+  'City Breaks':      'tourism.attraction,tourism.sights,entertainment.culture',
+  'Cultural Heritage':'heritage,tourism.sights',
+  'Adventure':        'leisure,activity',
 };
+
+/**
+ * Safe default category set — used when no category filter is selected.
+ * All entries verified to return HTTP 200 from the Geoapify Places API.
+ */
+const DEFAULT_CATEGORIES = 'tourism.attraction,tourism.sights,entertainment.culture,heritage,leisure';
 
 /**
  * Returns the configured Geoapify API key from environment variables.
@@ -53,7 +75,13 @@ export async function geocodeLocation(searchQuery, apiKey) {
   url.searchParams.set('lang', 'en'); // Request English localized results
   url.searchParams.set('apiKey', apiKey);
 
-  const res = await fetch(url.toString());
+  let res;
+  try {
+    res = await fetch(url.toString());
+  } catch {
+    throw new Error('Network error: Could not reach Geoapify geocoding service.');
+  }
+
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       throw new Error('Invalid or restricted Geoapify API key. Check your key and allowed domains.');
@@ -61,7 +89,7 @@ export async function geocodeLocation(searchQuery, apiKey) {
     if (res.status === 429) {
       throw new Error('Geoapify daily request limit exceeded (HTTP 429).');
     }
-    throw new Error(`Geocoding failed with status ${res.status}: ${res.statusText}`);
+    throw new Error(`Geocoding request failed (HTTP ${res.status}). Please try again.`);
   }
 
   const data = await res.json();
@@ -94,10 +122,10 @@ export async function geocodeLocation(searchQuery, apiKey) {
 
   return {
     placeId: first.place_id,
+    resultType: first.result_type || 'city',
     city: englishCity,
     country: englishCountry,
     state: englishState,
-    resultType: first.result_type || 'city',
     bbox: first.bbox || null,
     lat: first.lat,
     lon: first.lon,
@@ -114,6 +142,7 @@ export function deriveCategoryLabel(categories = []) {
   if (categories.some(c => c.includes('heritage') || c.includes('historic'))) return 'Cultural Heritage';
   if (categories.some(c => c.includes('activity') || c.includes('sport'))) return 'Adventure';
   if (categories.some(c => c.includes('attraction') || c.includes('sights'))) return 'City Breaks';
+  if (categories.some(c => c.includes('leisure') || c.includes('park'))) return 'Adventure';
   return 'Tourism';
 }
 
@@ -127,14 +156,7 @@ export function pickFallbackImage(categoryLabel) {
 
 /**
  * Resolves English place title strictly from API fields without inventing data.
- * Checks OpenStreetMap raw tags and Geoapify international dictionary:
- * 1. props.name_international?.en
- * 2. props.datasource?.raw?.['name:en']
- * 3. props.datasource?.raw?.['int_name']
- * 4. props.name
- * 5. props.address_line1
- * 6. props.formatted (first segment)
- * 7. Category fallback
+ * Checks OpenStreetMap raw tags and Geoapify international dictionary.
  */
 function resolveEnglishTitle(props, categoryLabel) {
   const raw = props.datasource?.raw || {};
@@ -207,8 +229,6 @@ function resolveLocationSubtitle(props, fallbackLocation) {
 
 /**
  * Resolves English-friendly address description.
- * If raw formatted address is only in local characters, construct a clean English structural description
- * using verified English components (City, Country, Category) rather than raw unreadable scripts.
  */
 function resolveEnglishDescription(props, title, categoryLabel, locationSubtitle) {
   const formatted = props.formatted?.trim();
@@ -236,16 +256,9 @@ export function normalizeGeoapifyPlace(feature, fallbackLocation = {}) {
   const props = feature.properties || {};
   const categoryLabel = deriveCategoryLabel(props.categories || []);
 
-  // Title: Prioritize English name if available in API response or raw OSM tags
   const title = resolveEnglishTitle(props, categoryLabel);
-
-  // Clean geographic location string (e.g. "Kyoto, Japan" or "Japan")
   const locationSubtitle = resolveLocationSubtitle(props, fallbackLocation);
-
-  // Description: accurate English address or location summary
   const description = resolveEnglishDescription(props, title, categoryLabel, locationSubtitle);
-
-  // Initial image URL (DestinationGrid handles fallback gracefully on error)
   const image = pickFallbackImage(categoryLabel);
 
   return {
@@ -269,37 +282,71 @@ export function normalizeGeoapifyPlace(feature, fallbackLocation = {}) {
 }
 
 /**
+ * Builds the filter parameter for the Geoapify Places API.
+ *
+ * Priority:
+ * 1. circle (lat/lon) — most specific and reliable across all result_types
+ * 2. rect (bbox) — used if coordinates are unavailable but bbox is present
+ *
+ * NOTE: The `place:` filter was removed because it occasionally returns HTTP 400
+ * for certain result_type values (e.g. suburb, region) even when the placeId is
+ * syntactically valid. circle + bbox always succeed.
+ */
+function buildPlacesFilter(location) {
+  if (location.lat && location.lon) {
+    // For a city, 25 km radius covers the urban core well.
+    // For a country-level result, use 100 km to capture more sights.
+    const isCountry = location.resultType === 'country';
+    const radiusMeters = isCountry ? 100000 : 25000;
+    return `circle:${location.lon},${location.lat},${radiusMeters}`;
+  }
+  if (location.bbox) {
+    const b = location.bbox;
+    return `rect:${b.lon1},${b.lat1},${b.lon2},${b.lat2}`;
+  }
+  return null;
+}
+
+/**
+ * Validates and returns a safe categories parameter string.
+ * Falls back to DEFAULT_CATEGORIES if the categoryKey is empty or not in CATEGORY_MAP.
+ * Guards against any injected commas or unexpected values.
+ */
+function resolveCategoriesParam(categoryKey) {
+  if (!categoryKey || typeof categoryKey !== 'string') return DEFAULT_CATEGORIES;
+  const trimmed = categoryKey.trim();
+  if (!trimmed) return DEFAULT_CATEGORIES;
+  return CATEGORY_MAP[trimmed] || DEFAULT_CATEGORIES;
+}
+
+/**
  * Queries places within a resolved city/location using Geoapify Places API.
  * Includes lang=en parameter where supported to request English-language results.
  * Endpoint: GET https://api.geoapify.com/v2/places
  */
 export async function fetchPlaces({ location, categoryKey, apiKey, limit = 12 }) {
-  const url = new URL('https://api.geoapify.com/v2/places');
+  const categoriesParam = resolveCategoriesParam(categoryKey);
+  const filterParam = buildPlacesFilter(location);
 
-  // Determine category filter
-  const categoriesParam = categoryKey && CATEGORY_MAP[categoryKey]
-    ? CATEGORY_MAP[categoryKey]
-    : 'tourism.attraction,tourism.sights,entertainment.culture,heritage,leisure.park';
-
-  url.searchParams.set('categories', categoriesParam);
-
-  // Filter strategy:
-  // 1. If location has placeId, filter by place
-  // 2. If country or large bbox, use bbox or circle
-  // 3. Fallback to circle radius
-  if (location.placeId) {
-    url.searchParams.set('filter', `place:${location.placeId}`);
-  } else if (location.bbox) {
-    url.searchParams.set('filter', `rect:${location.bbox.lon1},${location.bbox.lat1},${location.bbox.lon2},${location.bbox.lat2}`);
-  } else if (location.lat && location.lon) {
-    url.searchParams.set('filter', `circle:${location.lon},${location.lat},25000`);
+  if (!filterParam) {
+    // No usable filter — cannot make a valid Places request
+    throw new Error('Could not determine a search area for this location. Please try a city name.');
   }
 
+  const url = new URL('https://api.geoapify.com/v2/places');
+  url.searchParams.set('categories', categoriesParam);
+  url.searchParams.set('filter', filterParam);
   url.searchParams.set('limit', String(limit));
-  url.searchParams.set('lang', 'en'); // Request English localized results
+  url.searchParams.set('lang', 'en');
   url.searchParams.set('apiKey', apiKey);
 
-  const res = await fetch(url.toString());
+  let res;
+  try {
+    res = await fetch(url.toString());
+  } catch {
+    throw new Error('Network error: Could not reach Geoapify Places service.');
+  }
+
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       throw new Error('Invalid or restricted Geoapify API key. Check key settings.');
@@ -307,7 +354,15 @@ export async function fetchPlaces({ location, categoryKey, apiKey, limit = 12 })
     if (res.status === 429) {
       throw new Error('Geoapify rate limit reached. Please wait a moment or try again later.');
     }
-    throw new Error(`Places query failed with status ${res.status}: ${res.statusText}`);
+    if (res.status === 400) {
+      // Attempt to read the error body for diagnosing category issues in dev
+      let detail = '';
+      try { detail = await res.text(); } catch { /* ignore */ }
+      // Log without exposing the key
+      console.warn('[TripWise] Geoapify Places 400. filter:', filterParam, 'categories:', categoriesParam, 'detail:', detail);
+      throw new Error('Could not load live destinations. The search parameters were rejected by the API. Please try a different search.');
+    }
+    throw new Error(`Could not load live destinations (HTTP ${res.status}). Please try again.`);
   }
 
   const data = await res.json();
@@ -324,7 +379,7 @@ export async function fetchPlaces({ location, categoryKey, apiKey, limit = 12 })
 export async function searchDestinations({ query = '', category = '', apiKey = '' }) {
   const trimmedQuery = query.trim();
 
-  // If query is empty, default to popular travel cities
+  // If query is empty, default to a well-known city with lots of attractions
   const targetSearch = trimmedQuery || 'Paris';
 
   const location = await geocodeLocation(targetSearch, apiKey);

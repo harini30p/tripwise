@@ -10,10 +10,15 @@ import {
   searchDestinations,
 } from './services/geoapifyService';
 import {
-  loadSavedItinerary,
-  saveItinerary,
+  getClientId,
   getStableItemId,
+  sanitizeTripItem,
 } from './utils/itineraryStorage';
+import {
+  fetchItinerary,
+  saveDestination,
+  removeDestination,
+} from './services/itineraryApi';
 import './App.css';
 
 export default function App() {
@@ -23,17 +28,27 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Itinerary state initialized directly from localStorage
-  const [tripItems, setTripItems] = useState(() => loadSavedItinerary());
+  // ── Itinerary state ────────────────────────────────────────────────────────
+  // tripItems: the displayed list, always sourced from the server
+  const [tripItems, setTripItems] = useState([]);
+  // itineraryLoading: true while GET /api/itinerary is in flight
+  const [itineraryLoading, setItineraryLoading] = useState(true);
+  // itineraryError: message to show if the API is unreachable on startup
+  const [itineraryError, setItineraryError] = useState(null);
+  // actionError: transient error for a failed add/remove (not startup)
+  const [actionError, setActionError] = useState(null);
 
-  // Data fetching states
+  // Stable client ID for the API — generated once per browser, never changes
+  const clientId = useMemo(() => getClientId(), []);
+
+  // ── Destination / search state ────────────────────────────────────────────
   const [destinations, setDestinations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const [resolvedCity, setResolvedCity] = useState(null);
 
-  // Fallback to sample data function
+  // ── Destination fetching (Geoapify / sample) ──────────────────────────────
   const switchToSampleData = useCallback(() => {
     setIsLive(false);
     setError(null);
@@ -41,10 +56,8 @@ export default function App() {
     setDestinations(INITIAL_DESTINATIONS);
   }, []);
 
-  // Fetch destinations from Geoapify or fall back cleanly
   const loadDestinations = useCallback(
     async (queryText, categoryFilter) => {
-      // If no valid API key is present, fallback gracefully to initial sample data
       if (!hasGeoapifyKey()) {
         switchToSampleData();
         return;
@@ -65,10 +78,9 @@ export default function App() {
         setResolvedCity(result.resolvedCity);
         setIsLive(true);
       } catch (err) {
-        // Safe error presentation without exposing keys or crashing
-        const message = err instanceof Error ? err.message : 'Failed to fetch destinations.';
+        const message =
+          err instanceof Error ? err.message : 'Failed to fetch destinations.';
         setError(message);
-        // Do not overwrite previous destinations immediately so user can retry or switch to sample
       } finally {
         setIsLoading(false);
       }
@@ -76,30 +88,24 @@ export default function App() {
     [switchToSampleData]
   );
 
-  // Initial load: fetch default destinations (or sample data if no key)
+  // Initial destination load
   useEffect(() => {
     loadDestinations('', '');
   }, [loadDestinations]);
 
-  // Handle live search submission (pressing Enter or clicking Explore in Hero)
   const handleSearchSubmit = () => {
     loadDestinations(searchQuery, selectedCategory);
   };
 
-  // Handle category pill clicks (independent filter state)
   const handleCategoryChange = (newCategory) => {
     setSelectedCategory(newCategory);
-    // Trigger destination fetch with the new category
     loadDestinations(searchQuery, newCategory);
   };
 
-  // When in fallback sample mode, perform client-side filtering
+  // Client-side filtering for sample (non-live) mode
   const displayedDestinations = useMemo(() => {
-    if (isLive) {
-      // In live mode, destinations are already fetched with server filters
-      return destinations;
-    }
-    // In sample mode, apply client-side text and category filtering
+    if (isLive) return destinations;
+
     const q = searchQuery.trim().toLowerCase();
     const cat = selectedCategory.trim().toLowerCase();
 
@@ -114,37 +120,111 @@ export default function App() {
         !cat ||
         item.category.toLowerCase().includes(cat) ||
         (cat === 'city breaks' && item.category.toLowerCase().includes('city')) ||
-        (cat === 'cultural heritage' && item.category.toLowerCase().includes('cultural'));
+        (cat === 'cultural heritage' &&
+          item.category.toLowerCase().includes('cultural'));
 
       return matchesQuery && matchesCat;
     });
   }, [isLive, destinations, searchQuery, selectedCategory]);
 
-  // Persist itinerary to localStorage whenever tripItems change
+  // ── Itinerary: load from server on mount ─────────────────────────────────
   useEffect(() => {
-    saveItinerary(tripItems);
-  }, [tripItems]);
+    let cancelled = false;
 
-  // Handler to add a destination to the user's trip with duplicate prevention
-  const handleAddToTrip = (destination) => {
-    const candidateId = getStableItemId(destination);
-    if (!tripItems.some((item) => getStableItemId(item) === candidateId)) {
-      const preparedItem = {
-        ...destination,
-        id: candidateId,
-      };
-      setTripItems((prev) => [...prev, preparedItem]);
+    async function loadItinerary() {
+      setItineraryLoading(true);
+      setItineraryError(null);
+      try {
+        const items = await fetchItinerary(clientId);
+        if (!cancelled) setTripItems(items);
+      } catch (err) {
+        if (!cancelled) {
+          setItineraryError(
+            err instanceof Error
+              ? err.message
+              : 'Could not load your itinerary. Please try again.'
+          );
+          setTripItems([]); // show empty rather than crashing
+        }
+      } finally {
+        if (!cancelled) setItineraryLoading(false);
+      }
     }
-  };
 
-  // Handler to remove a destination from the user's trip
-  const handleRemoveTripItem = (destinationId) => {
-    setTripItems((prev) => prev.filter((item) => getStableItemId(item) !== destinationId));
-  };
+    loadItinerary();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  // ── Itinerary: add destination ─────────────────────────────────────────────
+  const handleAddToTrip = useCallback(
+    async (destination) => {
+      const candidateId = getStableItemId(destination);
+
+      // Prevent duplicate additions
+      if (tripItems.some((item) => getStableItemId(item) === candidateId)) return;
+
+      const preparedItem = sanitizeTripItem({ ...destination, id: candidateId });
+      if (!preparedItem) return;
+
+      // Optimistic update — add immediately so the UI feels fast
+      setTripItems((prev) => [...prev, preparedItem]);
+      setActionError(null);
+
+      try {
+        const saved = await saveDestination(clientId, preparedItem);
+        // Replace optimistic item with server-confirmed version if IDs match
+        setTripItems((prev) =>
+          prev.map((item) =>
+            getStableItemId(item) === candidateId ? { ...preparedItem, ...saved } : item
+          )
+        );
+      } catch (err) {
+        // Roll back the optimistic addition
+        setTripItems((prev) =>
+          prev.filter((item) => getStableItemId(item) !== candidateId)
+        );
+        setActionError(
+          err instanceof Error ? err.message : 'Failed to save destination. Please try again.'
+        );
+      }
+    },
+    [tripItems, clientId]
+  );
+
+  // ── Itinerary: remove destination ─────────────────────────────────────────
+  const handleRemoveTripItem = useCallback(
+    async (destinationId) => {
+      // Snapshot the item before removing for potential rollback
+      const removed = tripItems.find((item) => getStableItemId(item) === destinationId);
+      if (!removed) return;
+
+      // Optimistic remove
+      setTripItems((prev) =>
+        prev.filter((item) => getStableItemId(item) !== destinationId)
+      );
+      setActionError(null);
+
+      try {
+        await removeDestination(clientId, destinationId);
+      } catch (err) {
+        // Rollback: put the item back
+        setTripItems((prev) => {
+          const ids = new Set(prev.map((i) => getStableItemId(i)));
+          return ids.has(getStableItemId(removed)) ? prev : [...prev, removed];
+        });
+        setActionError(
+          err instanceof Error ? err.message : 'Failed to remove destination. Please try again.'
+        );
+      }
+    },
+    [tripItems, clientId]
+  );
 
   return (
     <div className="app-layout">
-      {/* Top Navigation Bar with active tab state & badge counter */}
+      {/* Top Navigation Bar */}
       <Navbar
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
@@ -154,7 +234,6 @@ export default function App() {
       <main className="main-content">
         {activeTab === 'explore' ? (
           <>
-            {/* Welcoming Hero section with separate search and category filter state */}
             <HeroSection
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -163,11 +242,27 @@ export default function App() {
               onSubmitSearch={handleSearchSubmit}
             />
 
-            {/* Destination Grid with skeletons, error banner, live/fallback badges */}
+            {/* Transient action error banner (add/remove failures) */}
+            {actionError && (
+              <div className="container">
+                <div className="action-error-banner" role="alert">
+                  <span>⚠️ {actionError}</span>
+                  <button
+                    type="button"
+                    className="action-error-dismiss"
+                    onClick={() => setActionError(null)}
+                    aria-label="Dismiss error"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
             <DestinationGrid
               destinations={displayedDestinations}
               onSelectDestination={handleAddToTrip}
-              tripItemIds={tripItems.map((item) => item.id)}
+              tripItemIds={tripItems.map((item) => getStableItemId(item))}
               isLoading={isLoading}
               error={error}
               onRetry={() => loadDestinations(searchQuery, selectedCategory)}
@@ -177,16 +272,31 @@ export default function App() {
             />
           </>
         ) : (
-          /* "My Trip" section for itinerary management */
           <MyTripSection
             tripItems={tripItems}
             onRemoveTripItem={handleRemoveTripItem}
             onExploreMore={() => setActiveTab('explore')}
+            isLoading={itineraryLoading}
+            error={itineraryError}
+            onRetryLoad={() => {
+              setItineraryError(null);
+              setItineraryLoading(true);
+              fetchItinerary(clientId)
+                .then(setTripItems)
+                .catch((err) =>
+                  setItineraryError(
+                    err instanceof Error ? err.message : 'Could not load your itinerary.'
+                  )
+                )
+                .finally(() => setItineraryLoading(false));
+            }}
+            actionError={actionError}
+            onDismissActionError={() => setActionError(null)}
           />
         )}
       </main>
 
-      {/* Clean Footer */}
+      {/* Footer */}
       <footer className="app-footer">
         <div className="container footer-container">
           <p>© {new Date().getFullYear()} TripWise. Built for AWS Student Builder Group Web Development.</p>

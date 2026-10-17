@@ -1,9 +1,38 @@
 /**
- * Storage utility for persisting and restoring the TripWise user itinerary.
- * Key: 'tripwise_itinerary'
+ * Storage utility for TripWise itinerary helpers.
+ *
+ * The itinerary itself is now stored in PostgreSQL via the backend API.
+ * This module provides:
+ *  - getClientId()      : stable anonymous browser identity for the API
+ *  - getStableItemId()  : deterministic ID derivation for destination objects
+ *  - sanitizeTripItem() : normalises a destination for display/API submission
  */
 
-const STORAGE_KEY = 'tripwise_itinerary';
+const CLIENT_ID_KEY = 'tripwise_client_id';
+
+/**
+ * Returns a stable, anonymous client ID for this browser.
+ * Creates and persists a random UUID the first time it is called.
+ * Safe to call repeatedly — always returns the same ID for the same browser.
+ */
+export function getClientId() {
+  try {
+    const existing = window.localStorage.getItem(CLIENT_ID_KEY);
+    if (existing) return existing;
+
+    // Generate a simple UUID v4
+    const id =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : 'tw-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+    window.localStorage.setItem(CLIENT_ID_KEY, id);
+    return id;
+  } catch {
+    // localStorage unavailable — return a session-only fallback
+    return 'tw-session-' + Math.random().toString(36).slice(2);
+  }
+}
 
 /**
  * Derives a stable, deterministic ID for any destination item.
@@ -41,68 +70,4 @@ export function sanitizeTripItem(item) {
   };
 }
 
-/**
- * Safely loads the saved itinerary from browser localStorage.
- * Returns an empty array if storage is empty, inaccessible, or contains corrupt JSON.
- */
-export function loadSavedItinerary() {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return [];
-    }
 
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    // Sanitize items and ensure unique IDs
-    const seenIds = new Set();
-    const sanitized = [];
-
-    for (const item of parsed) {
-      const clean = sanitizeTripItem(item);
-      if (clean && !seenIds.has(clean.id)) {
-        seenIds.add(clean.id);
-        sanitized.push(clean);
-      }
-    }
-
-    return sanitized;
-  } catch (err) {
-    // Graceful error recovery: never crash the app on storage errors
-    console.warn('TripWise storage warning: Could not load saved itinerary from localStorage.', err);
-    return [];
-  }
-}
-
-/**
- * Safely writes the current itinerary array to localStorage.
- * Catches QuotaExceededError or security exceptions silently.
- */
-export function saveItinerary(tripItems) {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return false;
-    }
-
-    if (!Array.isArray(tripItems)) {
-      return false;
-    }
-
-    const payload = tripItems
-      .map(sanitizeTripItem)
-      .filter(Boolean);
-
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    return true;
-  } catch (err) {
-    console.warn('TripWise storage warning: Could not persist itinerary to localStorage.', err);
-    return false;
-  }
-}

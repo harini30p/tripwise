@@ -28,3 +28,33 @@
     text-align: center;
   }
 }
+
+/* ── Transient action error banner (shared across tabs) ──────────────── */
+.action-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  color: #b91c1c;
+  margin: 0 0 16px 0;
+}
+
+.action-error-dismiss {
+  background: transparent;
+  color: #b91c1c;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.action-error-dismiss:hover {
+  background: #fee2e2;
+}
