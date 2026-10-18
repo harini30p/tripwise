@@ -1,5 +1,5 @@
 import React from 'react';
-import { handleImageFallbackError } from '../utils/imageFallbacks';
+import { handleImageFallbackError } from '../utils/imageFallbacks.js';
 import './DestinationGrid.css';
 
 export default function DestinationGrid({
@@ -15,6 +15,10 @@ export default function DestinationGrid({
   resolvedCity = null,
   sortBy = 'default',
   onSortChange = null,
+  filterQuery = '',
+  onFilterChange = null,
+  selectedCategory = '',
+  onClearCategory = null,
 }) {
   return (
     <section className="destinations-section">
@@ -45,6 +49,36 @@ export default function DestinationGrid({
           </div>
 
           <div className="header-meta-group">
+            {/* In-results keyword search input */}
+            {onFilterChange && (
+              <div className="filter-input-wrapper">
+                <span className="filter-search-icon" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  className="filter-search-input"
+                  placeholder="Filter places (e.g. lake, temple)..."
+                  value={filterQuery}
+                  onChange={(e) => onFilterChange(e.target.value)}
+                  aria-label="Filter within current destinations"
+                />
+                {filterQuery && (
+                  <button
+                    type="button"
+                    className="filter-clear-btn"
+                    onClick={() => onFilterChange('')}
+                    aria-label="Clear filter text"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Sorting Controls */}
             {onSortChange && (
               <div className="sort-control-wrapper">
@@ -66,7 +100,7 @@ export default function DestinationGrid({
               </div>
             )}
 
-            {!isLoading && (
+            {!isLoading && destinations.length > 0 && (
               <div className="results-count">
                 <span>{destinations.length} places available</span>
               </div>
@@ -126,19 +160,62 @@ export default function DestinationGrid({
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Contextual Empty State */}
         {!isLoading && destinations.length === 0 && !error && (
           <div className="no-results-card">
             <div className="no-results-icon">🔍</div>
-            <h3>No destinations found</h3>
-            <p>
-              We couldn't find points of interest matching your search. Try searching for a major city 
-              (e.g., Paris, Tokyo, Rome, New York) or clearing your category filter.
-            </p>
-            {onUseSampleData && (
-              <button type="button" className="btn-reset-explore" onClick={onUseSampleData}>
-                Load Sample Destinations
-              </button>
+
+            {filterQuery ? (
+              <>
+                <h3>No places match "{filterQuery}"</h3>
+                <p>
+                  We couldn't find any destinations in the current view matching your keyword.
+                  Try adjusting your search terms or clearing the keyword filter.
+                </p>
+                {onFilterChange && (
+                  <button
+                    type="button"
+                    className="btn-reset-explore"
+                    onClick={() => onFilterChange('')}
+                  >
+                    Clear Keyword Filter
+                  </button>
+                )}
+              </>
+            ) : selectedCategory ? (
+              <>
+                <h3>No destinations in "{selectedCategory}"</h3>
+                <p>
+                  No points of interest were found matching the selected category.
+                  Try choosing another category or clearing your filter to view all places.
+                </p>
+                {onClearCategory && (
+                  <button
+                    type="button"
+                    className="btn-reset-explore"
+                    onClick={onClearCategory}
+                  >
+                    Clear Category Filter
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <h3>No destinations found</h3>
+                <p>
+                  We couldn't find points of interest for this search. Try searching for a major city 
+                  (e.g., Paris, Tokyo, Rome, New York).
+                </p>
+                {onUseSampleData && (
+                  <button
+                    type="button"
+                    className="btn-reset-explore"
+                    onClick={onUseSampleData}
+                  >
+                    Load Sample Destinations
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

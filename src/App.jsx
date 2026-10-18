@@ -25,8 +25,9 @@ import './App.css';
 export default function App() {
   const [activeTab, setActiveTab] = useState('explore'); // 'explore' | 'mytrip'
 
-  // Separate states for text search and category filtering
+  // Separate states for location search (Geoapify geocoding) and in-result keyword filtering
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterQuery, setFilterQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   // Sorting state: 'default' | 'name-asc' | 'name-desc' | 'rating-desc'
   const [sortBy, setSortBy] = useState('default');
@@ -100,41 +101,42 @@ export default function App() {
   }, [loadDestinations]);
 
   const handleSearchSubmit = () => {
+    // Submitting the main search form loads a city/region from Geoapify
     loadDestinations(searchQuery, selectedCategory);
   };
 
   const handleCategoryChange = (newCategory) => {
     setSelectedCategory(newCategory);
+    // Preserves the existing search location while updating category
     loadDestinations(searchQuery, newCategory);
   };
 
-  // Client-side filtering & sorting without mutating original arrays
+  // Client-side filtering & sorting across title, country, category, and description
   const displayedDestinations = useMemo(() => {
-    let list;
+    // The in-grid filter strictly searches within the currently loaded destinations
+    const keyword = filterQuery.trim().toLowerCase();
+    const cat = selectedCategory.trim().toLowerCase();
 
-    if (isLive) {
-      list = [...destinations];
-    } else {
-      const q = searchQuery.trim().toLowerCase();
-      const cat = selectedCategory.trim().toLowerCase();
+    const list = destinations.filter((item) => {
+      const matchesKeyword =
+        !keyword ||
+        (item.title && item.title.toLowerCase().includes(keyword)) ||
+        (item.country && item.country.toLowerCase().includes(keyword)) ||
+        (item.category && item.category.toLowerCase().includes(keyword)) ||
+        (item.description && item.description.toLowerCase().includes(keyword));
 
-      list = destinations.filter((item) => {
-        const matchesQuery =
-          !q ||
-          item.title.toLowerCase().includes(q) ||
-          item.country.toLowerCase().includes(q) ||
-          item.category.toLowerCase().includes(q);
+      // Category matching:
+      // In live mode, Geoapify has already fetched places according to the selectedCategory.
+      // In sample mode, we filter against the category string.
+      const matchesCategory =
+        !cat ||
+        !item.category ||
+        item.category.toLowerCase().includes(cat) ||
+        (cat === 'city breaks' && item.category.toLowerCase().includes('city')) ||
+        (cat === 'cultural heritage' && item.category.toLowerCase().includes('cultural'));
 
-        const matchesCat =
-          !cat ||
-          item.category.toLowerCase().includes(cat) ||
-          (cat === 'city breaks' && item.category.toLowerCase().includes('city')) ||
-          (cat === 'cultural heritage' &&
-            item.category.toLowerCase().includes('cultural'));
-
-        return matchesQuery && matchesCat;
-      });
-    }
+      return matchesKeyword && (isLive ? true : matchesCategory);
+    });
 
     // Apply sorting to a shallow copy
     if (sortBy === 'name-asc') {
@@ -312,6 +314,10 @@ export default function App() {
               resolvedCity={resolvedCity}
               sortBy={sortBy}
               onSortChange={setSortBy}
+              filterQuery={filterQuery}
+              onFilterChange={setFilterQuery}
+              selectedCategory={selectedCategory}
+              onClearCategory={() => handleCategoryChange('')}
             />
           </>
         ) : (
@@ -358,11 +364,9 @@ export default function App() {
       {/* Footer */}
       <footer className="app-footer">
         <div className="container footer-container">
-          <p>© {new Date().getFullYear()} TripWise. Built for AWS Student Builder Group Web Development.</p>
+          <p>© {new Date().getFullYear()} TripWise.</p>
           <div className="footer-links">
             <span>Powered by Geoapify &amp; OpenStreetMap</span>
-            <span>•</span>
-            <span>Track 1: Frontend Development</span>
           </div>
         </div>
       </footer>

@@ -42,13 +42,23 @@
   font-size: 0.9rem;
   color: #b91c1c;
   margin: 0 0 16px 0;
+  word-break: break-word;
+}
+
+.action-error-banner span:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .action-error-dismiss {
   background: transparent;
   color: #b91c1c;
-  font-size: 1rem;
-  padding: 2px 6px;
+  font-size: 1.1rem;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
   flex-shrink: 0;
   cursor: pointer;

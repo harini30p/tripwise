@@ -11,7 +11,7 @@
  *   - When in doubt, use a broader parent category rather than a deep sub-path.
  */
 
-import { getLocalFallbackImage } from '../utils/imageFallbacks';
+import { getLocalFallbackImage } from '../utils/imageFallbacks.js';
 
 // Curated category photography fallbacks (with local SVG backups if network fails)
 const CATEGORY_FALLBACK_IMAGES = {
@@ -135,14 +135,38 @@ export async function geocodeLocation(searchQuery, apiKey) {
 
 /**
  * Derives a human-readable English category tag from Geoapify categories array.
+ * When activeCategory is passed, it prioritizes matching the requested category context
+ * if the underlying taxonomy contains any related category signals.
  */
-export function deriveCategoryLabel(categories = []) {
+export function deriveCategoryLabel(categories = [], activeCategory = '') {
+  // If the user actively selected a category, check if this place satisfies that category
+  if (activeCategory) {
+    const act = activeCategory.trim().toLowerCase();
+    if (act === 'beach' && categories.some(c => c.includes('beach') || c.includes('sand') || c.includes('natural') || c.includes('leisure'))) {
+      return 'Beach';
+    }
+    if (act === 'mountains' && categories.some(c => c.includes('mountain') || c.includes('peak') || c.includes('natural') || c.includes('elevation'))) {
+      return 'Mountains';
+    }
+    if (act === 'adventure' && categories.some(c => c.includes('activity') || c.includes('sport') || c.includes('leisure') || c.includes('park') || c.includes('camping'))) {
+      return 'Adventure';
+    }
+    if (act === 'cultural heritage' && categories.some(c => c.includes('heritage') || c.includes('historic') || c.includes('museum') || c.includes('temple') || c.includes('church') || c.includes('religion'))) {
+      return 'Cultural Heritage';
+    }
+    if (act === 'city breaks' && categories.some(c => c.includes('attraction') || c.includes('sights') || c.includes('entertainment') || c.includes('culture') || c.includes('tourism'))) {
+      return 'City Breaks';
+    }
+  }
+
+  // General inference hierarchy
   if (categories.some(c => c.includes('beach') || c.includes('sand'))) return 'Beach';
   if (categories.some(c => c.includes('mountain') || c.includes('peak'))) return 'Mountains';
-  if (categories.some(c => c.includes('heritage') || c.includes('historic'))) return 'Cultural Heritage';
+  if (categories.some(c => c.includes('heritage') || c.includes('historic') || c.includes('museum') || c.includes('temple') || c.includes('church') || c.includes('religion'))) return 'Cultural Heritage';
   if (categories.some(c => c.includes('activity') || c.includes('sport'))) return 'Adventure';
-  if (categories.some(c => c.includes('attraction') || c.includes('sights'))) return 'City Breaks';
+  if (categories.some(c => c.includes('attraction') || c.includes('sights') || c.includes('entertainment'))) return 'City Breaks';
   if (categories.some(c => c.includes('leisure') || c.includes('park'))) return 'Adventure';
+  if (categories.some(c => c.includes('natural'))) return 'Mountains';
   return 'Tourism';
 }
 
@@ -252,9 +276,9 @@ function resolveEnglishDescription(props, title, categoryLabel, locationSubtitle
  * Normalizes a Geoapify Places Feature into the TripWise destination card format.
  * Accurately uses real API properties without fabricating synthetic ratings or fake costs.
  */
-export function normalizeGeoapifyPlace(feature, fallbackLocation = {}) {
+export function normalizeGeoapifyPlace(feature, fallbackLocation = {}, activeCategory = '') {
   const props = feature.properties || {};
-  const categoryLabel = deriveCategoryLabel(props.categories || []);
+  const categoryLabel = deriveCategoryLabel(props.categories || [], activeCategory);
 
   const title = resolveEnglishTitle(props, categoryLabel);
   const locationSubtitle = resolveLocationSubtitle(props, fallbackLocation);
@@ -370,7 +394,7 @@ export async function fetchPlaces({ location, categoryKey, apiKey, limit = 12 })
     return [];
   }
 
-  return data.features.map(f => normalizeGeoapifyPlace(f, location));
+  return data.features.map(f => normalizeGeoapifyPlace(f, location, categoryKey));
 }
 
 /**

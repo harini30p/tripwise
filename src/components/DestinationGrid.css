@@ -140,6 +140,60 @@
   padding: 4px 6px;
 }
 
+/* In-results keyword search */
+.filter-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px 4px 12px;
+  transition: all var(--transition-fast);
+}
+
+.filter-input-wrapper:hover,
+.filter-input-wrapper:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.filter-search-icon {
+  color: var(--color-text-subtle);
+  display: flex;
+  align-items: center;
+}
+
+.filter-search-input {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-main);
+  outline: none;
+  width: 175px;
+}
+
+.filter-search-input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.filter-clear-btn {
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-clear-btn:hover {
+  color: var(--color-text-main);
+}
+
 /* API Error Card */
 .api-error-card {
   display: flex;
@@ -212,7 +266,7 @@
 /* Grid Layout */
 .destination-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 28px;
 }
 
@@ -544,11 +598,12 @@
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
+    gap: 10px;
   }
 
   .sort-control-wrapper {
     flex: 1;
-    min-width: 180px;
+    min-width: 160px;
     justify-content: space-between;
   }
 
@@ -567,5 +622,61 @@
   .card-add-btn {
     flex: 1;
     text-align: center;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .destinations-section {
+    padding: 24px 0 60px 0;
+  }
+
+  .destination-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .header-meta-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-input-wrapper,
+  .sort-control-wrapper,
+  .results-count,
+  .btn-switch-sample {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .filter-search-input {
+    width: 100%;
+  }
+
+  .budget-value {
+    max-width: 100%;
+  }
+
+  .api-error-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .error-actions {
+    width: 100%;
+  }
+
+  .btn-retry,
+  .btn-use-sample {
+    flex: 1;
+    text-align: center;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }

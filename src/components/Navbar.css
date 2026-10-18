@@ -123,3 +123,21 @@
     height: 64px;
   }
 }
+
+@media (max-width: 420px) {
+  .brand-text {
+    font-size: 1.15rem;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .brand-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .nav-item {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+}

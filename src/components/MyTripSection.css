@@ -231,9 +231,28 @@
 }
 
 @media (max-width: 640px) {
+  .mytrip-section {
+    padding: 32px 0 60px 0;
+  }
+  .mytrip-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .btn-explore-more {
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .trip-item-card {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
   }
   .trip-item-thumb {
     width: 100%;
@@ -246,6 +265,14 @@
     align-items: center;
     border-top: 1px solid var(--color-border);
     padding-top: 12px;
+  }
+  .btn-item-details,
+  .btn-remove-item {
+    min-height: 38px;
+    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
