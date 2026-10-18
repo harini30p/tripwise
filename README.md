@@ -4,41 +4,21 @@ TripWise is a modern full-stack travel planning application designed to help tra
 
 Users can search for any destination or major city worldwide, filter attractions by categories, sort results, view detailed location information (including addresses, geographical coordinates, and direct OpenStreetMap links), and build a custom travel plan saved securely to a PostgreSQL database.
 
-**GitHub Repository:** [https://github.com/harini30p/tripwise](https://github.com/harini30p/tripwise)
-
----
-
-## Chosen Track
-
-- **Track:** Track 1: Frontend Development
-
-> *Note:* While built under Track 1: Frontend Development, TripWise incorporates a full-stack architecture featuring a dedicated Node.js/Express REST backend connected to a serverless Neon PostgreSQL database for persistent multi-device itinerary storage.
+- **Live Application:** [https://tripwise-wine.vercel.app/](https://tripwise-wine.vercel.app/)
+- **Backend Health Check:** [https://tripwise-api-wi36.onrender.com/api/health](https://tripwise-api-wi36.onrender.com/api/health)
+- **GitHub Repository:** [https://github.com/harini30p/tripwise](https://github.com/harini30p/tripwise)
 
 ---
 
 ## Technologies Used
 
-### Frontend
-- **Framework:** React 19 (`react`, `react-dom`)
-- **Build Tool & Dev Server:** Vite 8
-- **Language:** JavaScript (ES Modules)
-- **Styling:** Vanilla CSS with custom design tokens, responsive grid/flexbox layouts, and glassmorphism accents
-- **Linter:** Oxlint
-
-### Backend
-- **Runtime:** Node.js (ES Modules)
-- **Framework:** Express.js 4
-- **Database Driver:** `pg` (node-postgres) with connection pooling and SSL
-- **Cross-Origin Resource Sharing:** `cors`
-- **Configuration:** `dotenv`
-
-### Database
-- **Database:** PostgreSQL (Neon Serverless PostgreSQL)
-
-### External APIs & Data Sources
-- **Geoapify Geocoding API (`/v1/geocode/search`):** Resolves city/region queries to geographical coordinates and bounding boxes.
-- **Geoapify Places API (`/v2/places`):** Queries real-time tourist attractions, natural landmarks, cultural spots, and entertainment venues.
-- **OpenStreetMap (OSM):** Map data attribution and external map links for destinations.
+- **Frontend:** React (`react`, `react-dom`), Vite, CSS
+- **Backend:** Node.js, Express.js (`pg`, `cors`, `dotenv`)
+- **Database:** Neon PostgreSQL (Serverless PostgreSQL with connection pooling and SSL)
+- **Destination Search & Geolocation:** Geoapify Places & Geocoding APIs
+- **Map & Attribution Data:** OpenStreetMap (OSM)
+- **Frontend Deployment:** Vercel
+- **Backend Deployment:** Render
 
 ---
 
@@ -210,7 +190,7 @@ npm run preview
    - **Output Directory:** `dist`
 3. Set Environment Variables in Vercel:
    - `VITE_GEOAPIFY_API_KEY`: Your production Geoapify API key.
-   - `VITE_API_BASE_URL`: The deployed URL of your Render backend service (e.g., `https://tripwise-api.onrender.com`).
+   - `VITE_API_BASE_URL`: The deployed URL of your Render backend service (`https://tripwise-api-wi36.onrender.com`).
 4. Deploy the project.
 
 ### Backend on Render
@@ -222,7 +202,7 @@ npm run preview
    - **Start Command:** `npm start`
 3. Set Environment Variables in Render:
    - `PORT`: `5000` (or leave default assigned by Render)
-   - `CLIENT_ORIGIN`: Your deployed Vercel frontend URL (e.g., `https://tripwise.vercel.app`)
+   - `CLIENT_ORIGIN`: Your deployed Vercel frontend URL (`https://tripwise-wine.vercel.app`)
    - `DATABASE_URL`: Your Neon PostgreSQL connection string with `?sslmode=require`
 4. Deploy the web service.
 
